@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Match Job Description{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="page-header">
+        <h1 class="page-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Match Resumes with Job Description
+        </h1>
+        <p class="page-subtitle">Paste a job description and upload resumes to see how well they match using cosine similarity.</p>
+    </div>
+
+    {% if not show_results %}
+    <!-- Input Form -->
+    <form action="{{ url_for('match') }}" method="POST" enctype="multipart/form-data" id="match-form">
+        <div class="match-layout">
+            <!-- Left: Job Description -->
+            <div class="match-panel">
+                <h3 class="panel-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                    Job Description
+                </h3>
+                <textarea name="job_description" id="jd-input" class="jd-textarea" 
+                    placeholder="Paste the job description here...&#10;&#10;Example:&#10;We are looking for a Python Developer with experience in Django, REST APIs, and PostgreSQL. The candidate should have strong problem-solving skills and experience with agile methodologies..."
+                    required></textarea>
+                <div class="char-count"><span id="char-count">0</span> characters</div>
+            </div>
+
+            <!-- Right: Upload Resumes -->
+            <div class="match-panel">
+                <h3 class="panel-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload Resumes
+                </h3>
+                <div class="dropzone dropzone-small" id="match-dropzone">
+                    <input type="file" name="resumes" id="match-file-input" multiple accept=".pdf,.docx" hidden>
+                    <div class="dropzone-content">
+                        <div class="dropzone-icon">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17,8 12,3 7,8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                        </div>
+                        <p class="dropzone-title">Drop resumes here</p>
+                        <p class="dropzone-text">or <button type="button" class="dropzone-btn" onclick="document.getElementById('match-file-input').click()">browse</button></p>
+                        <div class="dropzone-formats">
+                            <span class="format-badge">PDF</span>
+                            <span class="format-badge">DOCX</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="file-list file-list-small" id="match-file-list" style="display: none;">
+                    <div id="match-file-items"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-lg" id="match-btn" disabled>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <span class="btn-text">Find Best Matches</span>
+                <span class="btn-loading" style="display:none;">
+                    <span class="spinner"></span> Analyzing...
+                </span>
+            </button>
+        </div>
+    </form>
+
+    {% else %}
+    <!-- Match Results -->
+    <div class="match-results">
+        <!-- JD Preview -->
+        <div class="jd-preview">
+            <h3 class="panel-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                Job Description
+            </h3>
+            <p class="jd-text">{{ data.job_description_preview }}</p>
+        </div>
+
+        <!-- Ranked Results -->
+        <h3 class="results-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Ranked Candidates — {{ data.total }} resume{{ 's' if data.total != 1 else '' }}
+        </h3>
+
+        <div class="match-table-container">
+            <table class="match-table" id="match-results-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Resume</th>
+                        <th>Category</th>
+                        <th>Match Score</th>
+                        <th>Skills</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in data.results %}
+                    <tr class="{% if loop.index == 1 %}top-match{% endif %}">
+                        <td>
+                            <span class="rank-badge rank-{{ item.rank }}">
+                                {% if item.rank == 1 %}🥇{% elif item.rank == 2 %}🥈{% elif item.rank == 3 %}🥉{% else %}#{{ item.rank }}{% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="resume-name">{{ item.filename }}</div>
+                        </td>
+                        <td>
+                            <span class="category-badge small">{{ item.category }}</span>
+                        </td>
+                        <td>
+                            <div class="match-score-cell">
+                                <span class="match-score-value">{{ item.match_score }}%</span>
+                                <div class="progress-bar small">
+                                    <div class="progress-fill {% if item.match_score >= 70 %}high{% elif item.match_score >= 40 %}medium{% else %}low{% endif %}" 
+                                         style="width: 0%" data-width="{{ item.match_score }}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="skills-tags compact">
+                                {% for skill in item.skills.technical[:3] %}
+                                <span class="skill-tag technical small">{{ skill }}</span>
+                                {% endfor %}
+                                {% if item.skills.total_count > 3 %}
+                                <span class="skill-tag more small">+{{ item.skills.total_count - 3 }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions">
+        <a href="{{ url_for('match') }}" class="btn btn-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1,4 1,10 7,10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            New Search
+        </a>
+        <a href="{{ url_for('upload') }}" class="btn btn-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Classify Resumes
+        </a>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

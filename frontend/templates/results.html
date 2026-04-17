@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}Classification Results{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="page-header">
+        <h1 class="page-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Classification Results
+        </h1>
+        <p class="page-subtitle">{{ data.total }} resume{{ 's' if data.total != 1 else '' }} classified</p>
+    </div>
+
+    <!-- Results Grid -->
+    <div class="results-grid">
+        {% for item in data.results %}
+        <div class="result-card" id="result-{{ loop.index }}">
+            <!-- Card Header -->
+            <div class="result-header">
+                <div class="result-file">
+                    <div class="file-icon">
+                        {% if item.filename.endswith('.pdf') %}
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                        {% else %}
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+                        {% endif %}
+                    </div>
+                    <div class="file-info">
+                        <span class="file-name">{{ item.filename }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category Badge -->
+            <div class="result-category">
+                <span class="category-badge">{{ item.category }}</span>
+            </div>
+
+            <!-- Confidence -->
+            <div class="result-confidence">
+                <div class="confidence-label">
+                    <span>Confidence</span>
+                    <span class="confidence-value">{{ item.confidence }}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill {% if item.confidence >= 80 %}high{% elif item.confidence >= 50 %}medium{% else %}low{% endif %}" 
+                         style="width: 0%" data-width="{{ item.confidence }}%"></div>
+                </div>
+            </div>
+
+            <!-- Skills -->
+            {% if item.skills and item.skills.total_count > 0 %}
+            <div class="result-skills">
+                <div class="skills-header">
+                    <span class="skills-title">Extracted Skills</span>
+                    <span class="skills-count">{{ item.skills.total_count }} found</span>
+                </div>
+                <div class="skills-tags">
+                    {% for skill in item.skills.technical[:8] %}
+                    <span class="skill-tag technical">{{ skill }}</span>
+                    {% endfor %}
+                    {% for skill in item.skills.soft_skills[:4] %}
+                    <span class="skill-tag soft">{{ skill }}</span>
+                    {% endfor %}
+                    {% if item.skills.total_count > 12 %}
+                    <span class="skill-tag more">+{{ item.skills.total_count - 12 }} more</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions">
+        <a href="{{ url_for('upload') }}" class="btn btn-secondary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Upload More
+        </a>
+        <a href="{{ url_for('match') }}" class="btn btn-primary">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Match with JD
+        </a>
+    </div>
+</section>
+{% endblock %}

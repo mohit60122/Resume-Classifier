@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+uploads/
+*.log
+.gemini/
+.idea/
+.vscode/
+backend/models/*.pkl
+backend/data/*.csv
